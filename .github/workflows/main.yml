@@ -22,11 +22,15 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Find project folder
+      - name: Prepare project
         run: |
-          F=$(find . -name settings.gradle.kts -not -path './.git/*' | head -1)
-          if [ -z "$F" ]; then echo "settings.gradle.kts не найден — файлы проекта не загружены"; ls -R | head -50; exit 1; fi
-          echo "PROJ=$(dirname "$F")" >> $GITHUB_ENV
+          Z=$(ls *.zip 2>/dev/null | head -1)
+          if [ -n "$Z" ]; then mkdir -p _src && unzip -oq "$Z" -d _src; fi
+          for f in $(find . -name settings.gradle.kts -not -path './.git/*'); do
+            d=$(dirname "$f")
+            if [ -f "$d/app/build.gradle.kts" ]; then echo "PROJ=$d" >> $GITHUB_ENV; found=1; break; fi
+          done
+          if [ -z "$found" ]; then echo "Не найден app/build.gradle.kts. Файлы:"; find . -not -path './.git/*' | head -80; exit 1; fi
 
       - name: Download circuit maps
         working-directory: ${{ env.PROJ }}
