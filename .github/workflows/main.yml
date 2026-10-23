@@ -22,19 +22,28 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      - name: Find project folder
+        run: |
+          F=$(find . -name settings.gradle.kts -not -path './.git/*' | head -1)
+          if [ -z "$F" ]; then echo "settings.gradle.kts не найден — файлы проекта не загружены"; ls -R | head -50; exit 1; fi
+          echo "PROJ=$(dirname "$F")" >> $GITHUB_ENV
+
       - name: Download circuit maps
+        working-directory: ${{ env.PROJ }}
         run: |
           mkdir -p app/src/main/assets
           curl -fsSL --retry 3 -o app/src/main/assets/f1-circuits.geojson \
             https://raw.githubusercontent.com/bacinger/f1-circuits/master/f1-circuits.geojson
 
       - name: Build debug APK
+        working-directory: ${{ env.PROJ }}
         run: gradle assembleDebug --no-daemon --stacktrace
 
       - name: Rename APK
+        working-directory: ${{ env.PROJ }}
         run: cp app/build/outputs/apk/debug/app-debug.apk F1-Calendar.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: F1-Calendar-apk
-          path: F1-Calendar.apk
+          path: ${{ env.PROJ }}/F1-Calendar.apk
