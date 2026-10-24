@@ -25,7 +25,8 @@ jobs:
       - name: Prepare project
         run: |
           Z=$(ls *.zip 2>/dev/null | head -1)
-          if [ -n "$Z" ]; then mkdir -p _src && unzip -oq "$Z" -d _src; fi
+          echo "Используется архив: $Z"
+          if [ -n "$Z" ]; then rm -rf _src && mkdir -p _src && unzip -oq "$Z" -d _src; fi
           for f in $(find . -name settings.gradle.kts -not -path './.git/*'); do
             d=$(dirname "$f")
             if [ -f "$d/app/build.gradle.kts" ]; then echo "PROJ=$d" >> $GITHUB_ENV; found=1; break; fi
@@ -41,7 +42,15 @@ jobs:
 
       - name: Build debug APK
         working-directory: ${{ env.PROJ }}
-        run: gradle assembleDebug --no-daemon --stacktrace
+        run: |
+          set -o pipefail
+          gradle assembleDebug --no-daemon --console=plain 2>&1 | tee build.log
+
+      - name: Show errors
+        if: failure()
+        working-directory: ${{ env.PROJ }}
+        run: |
+          grep -n -E "^e: |error:|FAILED|What went wrong" -A4 build.log | head -100
 
       - name: Rename APK
         working-directory: ${{ env.PROJ }}
